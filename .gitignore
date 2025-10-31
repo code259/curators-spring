@@ -7,6 +7,7 @@ target/
 volumes/sqlite.db
 volumes/sqlite.db-shm
 volumes/sqlite.db-wal
+uploads
 
 ### STS ###
 .apt_generated

@@ -26,7 +26,8 @@ public class ChatterController {
         HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory();
         // Set timeouts in milliseconds
         requestFactory.setConnectTimeout(5000);
-        requestFactory.setReadTimeout(5000);
+        // For newer Spring versions, use setConnectionRequestTimeout instead of setReadTimeout
+        requestFactory.setConnectionRequestTimeout(5000);
         this.restTemplate = new RestTemplate(requestFactory);
     }
 
@@ -61,10 +62,10 @@ public class ChatterController {
             HttpEntity<String> entity = new HttpEntity<>(jsonInputString, headers);
 
             ResponseEntity<String> response = restTemplate.postForEntity(MODEL_URL, entity, String.class);
-            System.out.println("HTTP Response Code: " + response.getStatusCodeValue());
+            System.out.println("HTTP Response Code: " + response.getStatusCode().value());
 
             if (!response.getStatusCode().is2xxSuccessful()) {
-                throw new RestClientException("Unexpected response code: " + response.getStatusCodeValue());
+                throw new RestClientException("Unexpected response code: " + response.getStatusCode().value());
             }
 
             System.out.println("Raw API response: " + response.getBody());

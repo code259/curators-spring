@@ -42,12 +42,13 @@ public class CalendarEventService {
     }
 
     // Update event by id
-    public boolean updateEventById(int id, String newTitle, String description, LocalDate date) {
+    public boolean updateEventById(int id, String newTitle, String description, LocalDate date, String period) {
         CalendarEvent event = getEventById(id);
         if (event != null) {
             event.setTitle(newTitle);
             event.setDescription(description);
             event.setDate(date);
+            event.setPeriod(period);
             calendarEventRepository.save(event);
             return true;
         }

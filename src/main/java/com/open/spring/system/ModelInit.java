@@ -1,6 +1,7 @@
 package com.open.spring.system;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,10 +26,10 @@ import com.open.spring.mvc.bathroom.Issue;
 import com.open.spring.mvc.bathroom.IssueJPARepository;
 import com.open.spring.mvc.bathroom.Teacher;
 import com.open.spring.mvc.bathroom.TeacherJpaRepository;
-import com.open.spring.mvc.bathroom.Tinkle;
 import com.open.spring.mvc.bathroom.TinkleJPARepository;
 import com.open.spring.mvc.comment.Comment;
 import com.open.spring.mvc.comment.CommentJPA;
+import com.open.spring.mvc.hardAssets.HardAssetsRepository;
 import com.open.spring.mvc.jokes.Jokes;
 import com.open.spring.mvc.jokes.JokesJpaRepository;
 import com.open.spring.mvc.media.MediaJpaRepository;
@@ -40,6 +41,8 @@ import com.open.spring.mvc.person.PersonDetailsService;
 import com.open.spring.mvc.person.PersonJpaRepository;
 import com.open.spring.mvc.person.PersonRole;
 import com.open.spring.mvc.person.PersonRoleJpaRepository;
+import com.open.spring.mvc.quiz.QuizScore;
+import com.open.spring.mvc.quiz.QuizScoreRepository;
 import com.open.spring.mvc.rpg.adventureChoice.AdventureChoice;
 import com.open.spring.mvc.rpg.adventureChoice.AdventureChoiceJpaRepository;
 import com.open.spring.mvc.rpg.adventureQuestion.AdventureQuestion;
@@ -53,12 +56,17 @@ import com.open.spring.mvc.student.StudentQueueJPARepository;
 import com.open.spring.mvc.synergy.SynergyGrade;
 import com.open.spring.mvc.synergy.SynergyGradeJpaRepository;
 import com.open.spring.mvc.user.UserJpaRepository;
+import com.open.spring.mvc.quiz.QuizScore;
+import com.open.spring.mvc.quiz.QuizScoreRepository;
+import com.open.spring.mvc.resume.Resume;
+import com.open.spring.mvc.resume.ResumeJpaRepository;
 
 
 @Component
 @Configuration // Scans Application for ModelInit Bean, this detects CommandLineRunner
 public class ModelInit {
     @Autowired JokesJpaRepository jokesRepo;
+    @Autowired HardAssetsRepository hardAssetsRepository;
     @Autowired NoteJpaRepository noteRepo;
     @Autowired PersonRoleJpaRepository roleJpaRepository;
     @Autowired PersonDetailsService personDetailsService;
@@ -81,6 +89,8 @@ public class ModelInit {
     @Autowired AdventureChoiceJpaRepository choiceJpaRepository;
     @Autowired GameJpaRepository gameJpaRepository;
     @Autowired MediaJpaRepository mediaJpaRepository;
+    @Autowired QuizScoreRepository quizScoreRepository;
+    @Autowired ResumeJpaRepository resumeJpaRepository;
 
     @Bean
     @Transactional
@@ -278,6 +288,29 @@ public class ModelInit {
 
                 if (existingPlayers.isEmpty()) {
                     mediaJpaRepository.save(score);
+                }
+            }
+
+            // Quiz Score initialization
+            QuizScore[] quizScoreArray = QuizScore.init();
+            for (QuizScore quizScore : quizScoreArray) {
+                List<QuizScore> existingScores = quizScoreRepository.findByUsernameIgnoreCaseOrderByScoreDesc(quizScore.getUsername());
+                
+                // Only add if this exact score doesn't exist for this user
+                boolean scoreExists = existingScores.stream()
+                    .anyMatch(s -> s.getScore() == quizScore.getScore());
+                
+                if (!scoreExists) {
+                    quizScoreRepository.save(quizScore);
+                }
+            }
+
+            // Resume initialization via static init on Resume class
+            Resume[] resumes = Resume.init();
+            for (Resume resume : resumes) {
+                Optional<Resume> existing = resumeJpaRepository.findByUsername(resume.getUsername());
+                if (existing.isEmpty()) {
+                    resumeJpaRepository.save(resume);
                 }
             }
         };

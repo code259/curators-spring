@@ -164,7 +164,7 @@ class BackupConfiguration {
         // Add timeout configuration
         HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
         factory.setConnectTimeout(5000);
-        factory.setReadTimeout(10000);
+        factory.setConnectionRequestTimeout(10000);
         restTemplate.setRequestFactory(factory);
         
         return restTemplate;

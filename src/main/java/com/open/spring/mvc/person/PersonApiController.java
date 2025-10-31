@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -187,6 +188,40 @@ public class PersonApiController {
 
         // Return the variable in the ResponseEntity
         return new ResponseEntity<>(people, HttpStatus.OK);
+    }
+    
+    /**
+     * Retrieves a single page of the Person entities in the database, people
+     * 
+     * @param personId The starting index of the page to retrieve.
+     * @param pageSize The number of Person entities to include in the page.
+     * @return A ResponseEntity containing a paginated list for Person entities
+     * @throws JsonProcessingException 
+     */
+    @GetMapping("/people/page/{personId}")
+    public ResponseEntity<?> getPeoplePage(@PathVariable int personId, @RequestParam int pageSize) throws JsonProcessingException {
+        List<Person> allPeople = repository.findAllByOrderByNameAsc();
+        int total = allPeople.size();
+
+        int start = Math.max(0, personId);
+        int end = Math.min(start + pageSize, total);
+
+        List<Person> pageData = allPeople.subList(start, end);
+
+        // Build paging URLs
+        String baseUrl = "/api/people/page/";
+        String previous = start > 0 ? baseUrl + Math.max(0, start - pageSize) + "?pageSize=" + pageSize : null;
+        String next = end < total ? baseUrl + end + "?pageSize=" + pageSize : null;
+
+        Map<String, Object> paging = new HashMap<>();
+        paging.put("previous", previous);
+        paging.put("next", next);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("data", pageData);
+        response.put("paging", paging);
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     /**

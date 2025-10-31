@@ -43,9 +43,6 @@ public class Bank {
 
     private String uid;
 
-    @Column(unique = true, nullable = false)
-    private String username;
-
     @OneToOne
     @JoinColumn(name = "person_id", referencedColumnName = "id")
     @OnDelete(action = OnDeleteAction.CASCADE)
@@ -79,7 +76,6 @@ public class Bank {
     public Bank(Person person) {
         this.person = person;
         this.person.setBanks(this);
-        this.username = person.getName();
         this.uid = person.getUid();
         this.loanAmount = 0.0; // Default to 0
         this.balance = 100000.0;
@@ -89,15 +85,9 @@ public class Bank {
         initializeNpcProgress();
         initializeFeatureImportance();
     }
-    
-    /**
-     * Ensure username and balance are set before persistence
-     */
-    @PrePersist
-    public void prePersist() {
-        if (person != null) {
-            this.username = person.getName();
-        }
+
+    public String getUsername() {
+        return person != null ? person.getName() : null;
     }
     
     private void initializeNpcProgress() {

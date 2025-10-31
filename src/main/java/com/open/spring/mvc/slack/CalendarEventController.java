@@ -101,6 +101,7 @@ public class CalendarEventController {
             String newTitle = payload.get("newTitle");
             String description = payload.get("description");
             String dateStr = payload.get("date");
+            String period = payload.get("period");
 
             if (newTitle == null || newTitle.trim().isEmpty()) {
                 return ResponseEntity.badRequest().body("New title cannot be null or empty.");
@@ -111,6 +112,9 @@ public class CalendarEventController {
             if (dateStr == null || dateStr.trim().isEmpty()) {
                 return ResponseEntity.badRequest().body("Date cannot be null or empty.");
             }
+            if (period == null || period.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("Period cannot be null or empty.");
+            }
 
             LocalDate date;
             try {
@@ -119,7 +123,7 @@ public class CalendarEventController {
                 return ResponseEntity.badRequest().body("Invalid date format. Use YYYY-MM-DD.");
             }
 
-            boolean updated = calendarEventService.updateEventById(id, newTitle.trim(), description.trim(), date);
+            boolean updated = calendarEventService.updateEventById(id, newTitle.trim(), description.trim(), date, period.trim());
             return updated ? ResponseEntity.ok("Event updated successfully.")
                         : ResponseEntity.status(HttpStatus.NOT_FOUND).body("Event with the given id not found.");
         } catch (Exception e) {
