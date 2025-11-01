@@ -291,27 +291,34 @@ public class ModelInit {
                 }
             }
 
-            // Quiz Score initialization
-            QuizScore[] quizScoreArray = QuizScore.init();
-            for (QuizScore quizScore : quizScoreArray) {
-                List<QuizScore> existingScores = quizScoreRepository.findByUsernameIgnoreCaseOrderByScoreDesc(quizScore.getUsername());
-                
-                // Only add if this exact score doesn't exist for this user
-                boolean scoreExists = existingScores.stream()
-                    .anyMatch(s -> s.getScore() == quizScore.getScore());
-                
-                if (!scoreExists) {
-                    quizScoreRepository.save(quizScore);
+            // Quiz Score initialization (guarded in case the table doesn't exist yet)
+            try {
+                QuizScore[] quizScoreArray = QuizScore.init();
+                for (QuizScore quizScore : quizScoreArray) {
+                    List<QuizScore> existingScores = quizScoreRepository
+                        .findByUsernameIgnoreCaseOrderByScoreDesc(quizScore.getUsername());
+
+                    boolean scoreExists = existingScores.stream()
+                        .anyMatch(s -> s.getScore() == quizScore.getScore());
+
+                    if (!scoreExists) {
+                        quizScoreRepository.save(quizScore);
+                    }
                 }
+            } catch (Exception ignored) {
+                // If the quiz_scores table is missing or unavailable at startup, skip seeding
             }
 
-            // Resume initialization via static init on Resume class
-            Resume[] resumes = Resume.init();
-            for (Resume resume : resumes) {
-                Optional<Resume> existing = resumeJpaRepository.findByUsername(resume.getUsername());
-                if (existing.isEmpty()) {
-                    resumeJpaRepository.save(resume);
+            // Resume initialization via static init on Resume class (guard missing table)
+            try {
+                Resume[] resumes = Resume.init();
+                for (Resume resume : resumes) {
+                    Optional<Resume> existing = resumeJpaRepository.findByUsername(resume.getUsername());
+                    if (existing.isEmpty()) {
+                        resumeJpaRepository.save(resume);
+                    }
                 }
+            } catch (Exception ignored) {
             }
         };
     }
