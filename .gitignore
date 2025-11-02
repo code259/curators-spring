@@ -50,3 +50,5 @@ backups/*
 
 ### Plots ###
 testoutput/
+
+volumes/data.json

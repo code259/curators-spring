@@ -1,5 +1,6 @@
 package com.open.spring.system;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -99,6 +100,18 @@ public class ModelInit {
     @Transactional
     CommandLineRunner run() {
         return args -> {
+            if (new File("volumes/.skip-modelinit").exists()) {
+                System.out.println("Skip flag detected, ModelInit will not run");
+                return;
+            }
+
+            long personCount = personJpaRepository.count();
+            if (personCount > 0) {
+                System.out.println("Database already contains " + personCount + " persons. Skipping ModelInit...");
+                return;
+            }
+        
+            System.out.println("Loading default sample data...");
             Person[] personArray = Person.init();
             for (Person person : personArray) {
                 List<Person> personFound = personDetailsService.list(person.getName(), person.getEmail());

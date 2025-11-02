@@ -47,15 +47,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * 2. Extract old data via API (if --import-remote)
  * 3. Backup current database
  * 4. Drop all tables
- * 5. Recreate schema (via Spring Boot startup)
- * 6. Load default data (via ModelInit)
- * 7. Load remote data (if --import-remote)
+ * 5. Recreate schema (via Spring Boot startup with ModelInit SKIPPED)
+ * 6. Load remote data (if --import-remote)
  */
 public class DatabaseMigrator {
     
     private static final String BACKUP_DIR = "volumes/backups/";
     private static final String PROPERTIES_FILE = "src/main/resources/application.properties";
     private static final String JSON_DATA_FILE = "volumes/data.json";
+    private static final String SKIP_FLAG_FILE = "volumes/.skip-modelinit";
     
     // Remote database configuration
     // Note: The deployed server doesn't require authentication for /api/exports/getAll
@@ -110,12 +110,22 @@ public class DatabaseMigrator {
             // Step 4: Drop all tables
             dropAllTables(databaseUrl);
             
-            // Step 5 & 6: Recreate schema and load default data
-            System.out.println("\nStarting Spring Boot to recreate schema and load default data...");
+            // Step 5: Recreate schema WITHOUT loading default data (skip ModelInit)
+            System.out.println("\nStarting Spring Boot to recreate schema...");
+            System.out.println("(ModelInit will be skipped to avoid conflicts with imported data)");
             System.out.println("(This will take a few seconds...)");
-            recreateDatabase();
             
-            // Step 7: Load remote data if we have it
+            // Create skip flag BEFORE starting Spring Boot
+            createSkipModelInitFlag();
+            
+            try {
+                recreateDatabase();
+            } finally {
+                // Always remove flag, even if recreation fails
+                removeSkipModelInitFlag();
+            }
+            
+            // Step 6: Load remote data if we have it
             if (importRemote && remoteData != null) {
                 System.out.println("\nLoading remote data into new database...");
                 loadRemoteData(remoteData);
@@ -127,22 +137,56 @@ public class DatabaseMigrator {
             
             if (importRemote && remoteData != null) {
                 System.out.println("Database migrated with:");
-                System.out.println("  Fresh schema");
-                System.out.println("  Default data (ModelInit)");
-                System.out.println("  Remote data imported");
+                System.out.println("  Fresh schema (created by Hibernate)");
+                System.out.println("  Remote data imported (ModelInit was skipped)");
             } else {
                 System.out.println("Database migrated with:");
-                System.out.println("  Fresh schema");
-                System.out.println("  Default data (ModelInit)");
+                System.out.println("  Fresh schema (created by Hibernate)");
+                System.out.println("  No data loaded");
+                System.out.println("\nNote: ModelInit was skipped. Start the application normally to load default data.");
             }
             
             System.out.println("\nYou can now start your application:");
             System.out.println("  ./mvnw spring-boot:run\n");
             
         } catch (Exception e) {
+            // Clean up flag on error
+            removeSkipModelInitFlag();
             System.err.println("\nAn error occurred during database migration:");
             e.printStackTrace();
             System.exit(1);
+        }
+    }
+    
+    /**
+     * Create a flag file to tell ModelInit to skip initialization
+     */
+    private static void createSkipModelInitFlag() {
+        try {
+            File flagFile = new File(SKIP_FLAG_FILE);
+            // Create parent directory if it doesn't exist
+            File parentDir = flagFile.getParentFile();
+            if (parentDir != null && !parentDir.exists()) {
+                parentDir.mkdirs();
+            }
+            flagFile.createNewFile();
+            System.out.println("Created skip-modelinit flag at " + SKIP_FLAG_FILE);
+        } catch (IOException e) {
+            System.err.println("Warning: Could not create skip flag: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Remove the skip flag file
+     */
+    private static void removeSkipModelInitFlag() {
+        File flagFile = new File(SKIP_FLAG_FILE);
+        if (flagFile.exists()) {
+            if (flagFile.delete()) {
+                System.out.println("Removed skip-modelinit flag");
+            } else {
+                System.err.println("Warning: Could not remove skip flag file");
+            }
         }
     }
     
@@ -187,9 +231,10 @@ public class DatabaseMigrator {
                     System.out.println("   - Backup the current database");
                     System.out.println("   - Drop all existing tables");
                     System.out.println("   - Recreate schema from scratch");
-                    System.out.println("   - Load default data");
                     if (importRemote) {
                         System.out.println("   - Import data from remote database");
+                    } else {
+                        System.out.println("   - Leave database empty (run app normally to load defaults)");
                     }
                     System.out.println();
                     
@@ -388,6 +433,7 @@ public class DatabaseMigrator {
     
     /**
      * Recreate database by starting Spring Boot temporarily
+     * NOTE: ModelInit will be skipped via the flag file
      */
     private static void recreateDatabase() throws IOException, InterruptedException {
         ProcessBuilder pb = new ProcessBuilder("./mvnw", "spring-boot:run", 
@@ -411,7 +457,7 @@ public class DatabaseMigrator {
                 
                 if (portCheck.exitValue() == 0) {
                     System.out.println(" OK");
-                    Thread.sleep(3000); // Give ModelInit time to run
+                    Thread.sleep(3000); // Give it time to complete schema creation
                     break;
                 }
             } catch (Exception e) {
