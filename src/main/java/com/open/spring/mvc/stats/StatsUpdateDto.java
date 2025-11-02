@@ -14,4 +14,5 @@ public class StatsUpdateDto {
     // Fields that can be updated
     private Boolean finished;
     private Double time;
+    private Double grades;
 }

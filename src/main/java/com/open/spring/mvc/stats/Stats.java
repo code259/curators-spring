@@ -27,4 +27,5 @@ public class Stats {
 
     private Boolean finished; //completed? yes or no
     private double time; // time, in seconds, spent on the page
+    private Double grades; // grade percentage or score for the module/submodule
 }
