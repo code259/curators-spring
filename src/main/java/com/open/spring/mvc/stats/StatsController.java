@@ -54,7 +54,6 @@ public class StatsController {
         }
         return new ResponseEntity<>(statsList, HttpStatus.OK);
     }
-
     /**
      * POST /api/stats
      * Create a new Stats record.
@@ -71,7 +70,11 @@ public class StatsController {
         Optional<Stats> existingStats = statsRepository.findByUsernameAndModuleAndSubmodule(
                 stats.getUsername(), stats.getModule(), stats.getSubmodule());
         if (existingStats.isPresent()) {
-            return new ResponseEntity<>(HttpStatus.CONFLICT); // Conflict, record exists
+            Stats statsToUpdate = existingStats.get();
+            statsToUpdate.setFinished(stats.getFinished());
+            statsToUpdate.setTime(stats.getTime());
+            Stats updatedStats = statsRepository.save(statsToUpdate);
+            return new ResponseEntity<>(updatedStats, HttpStatus.OK);
         }
         Stats newStats = statsRepository.save(stats);
         return new ResponseEntity<>(newStats, HttpStatus.CREATED);
