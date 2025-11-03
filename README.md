@@ -73,59 +73,6 @@ socket.port=8589
 - Login to ADMIN (toby) user using ADMIN_PASSWORD, examing menus and data
 - Try API endpoint: http://127.0.0.1:8585/api/jokes/
 
-## Database migration (backup, reset, import)
-
-Common flows you can run from the project root:
-
-1) Reset to clean schema + default data (fast)
-
-```bash
-scripts/db_init.sh
-```
-
-2) Migrate from deployed server (fetch all tables, then import)
-
-```bash
-# No prompts
-FORCE_YES=true scripts/db_migrate.sh --import
-
-# With prompts
-scripts/db_migrate.sh --import
-```
-
-3) Export current local data to JSON (admin endpoint)
-
-```bash
-scripts/export_current_json.sh
-# → volumes/backups/exports_YYYYMMDD_HHMMSS.json
-```
-
-4) Preserve Users/Groups/Bathroom across updates (export → reset → selective import)
-
-```bash
-scripts/db_preserve.sh
-# Default preserves person, groups, tinkle
-
-# Customize tables to restore
-IMPORT_TABLES=person,groups,tinkle,bathroom_queue scripts/db_preserve.sh
-```
-
-5) Import from a JSON file
-
-```bash
-# Import ALL tables from a JSON file
-python3 scripts/import_json_to_sqlite.py volumes/data.json volumes/sqlite.db
-
-# Explicitly import ALL
-IMPORT_TABLES=ALL python3 scripts/import_json_to_sqlite.py volumes/backups/exports_*.json volumes/sqlite.db
-
-# Import only selected tables
-IMPORT_TABLES=person,groups,tinkle python3 scripts/import_json_to_sqlite.py volumes/backups/exports_*.json volumes/sqlite.db
-```
-
-Notes:
-- The importer auto-matches JSON keys to actual DB columns and JSON-serializes nested dict/list values.
-- If port 8585 is busy, stop the app before running migration scripts.
 
 ## IDE management
 
@@ -150,3 +97,41 @@ Notes:
 - The controller is mainly "personViewController" for the backend, but other controllers include "personApiController" for the front end.
 - Techincally the image is wrong, "personDetailsService" is a controller. It is used by other controllers to change the database, so it seemed more accurate to call it a part of the model, rather than a controller.
 - The person.java is the pojo (object) that is used for the database schema.
+
+
+## Database Management Workflow with Scripts
+
+If you are working with the database, follow the below procedure to safely interact with the remote DB while applying changes locally. Certain scripts require spring to be running while others don't, so follow the instructions that the scripts provide.
+
+Note, steps 1,2,3,5 are on your development (LOCAL) server. You need to update your .env on development server and be sure all PRs are completed, pulled, and tested before you start pushing to production.
+
+1. Initialize your local DB with clean data. For example, this would be good to see that a schema update works correctly.
+> python scripts/db_init.py
+
+2. Pull the database content from the remote DB onto your local machine. This allows you to work with real data and test that real data works with your local changes.
+> python scripts/db_prod2local.py
+
+3. TEST TEST TEST! Make sure your changes work correctly with the local DB.
+
+4. Now go onto the remote DB and back up the db using "cp sqlite.db backups/sqlite_year-month-day.db" in the volumes directory of the spring directory on cockpit. Then, run `git pull` to ensure that spring has been updated with the latest code. Then, run `python scripts/db_init.py` again to ensure that the remote DB schema is up to date with the latest code.
+
+5. Once you are satisfied with your changes, push the local DB content to the remote DB. This requires authentication, so you need to replace the ADMIN_PASSWORD in the .env file of "spring" with the production admin password.
+> python scripts/db_local2prod.py
+
+## Condensed DB/Schema update simple steps
+
+**(a copy of what's above, just condensed)**
+
+1. Initialize local DB: `python scripts/db_init.py`
+
+2. Pull production data to local: `python scripts/db_prod2local.py`
+
+3. Test your changes locally
+
+4. On production server (in cockpit):
+- Backup DB in volumes directory: `cp sqlite.db backups/sqlite_year-month-day.db`
+- Update code: `git pull`
+- Update schema: `python scripts/db_init.py`
+
+5. Push local changes to production: `python scripts/db_local2prod.py`
+(Requires admin password from production in .env)
